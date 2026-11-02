@@ -47,7 +47,7 @@ router.post(
                 [id, userId, text]
             );
 
-           
+
             if (Number(video.user_id) !== Number(userId)) {
                 try {
                     await sendCommentNotification(
@@ -117,14 +117,14 @@ router.post(
     validate(videoSchema),
     async (req, res) => {
         try {
-           const { title, description, videoUrl } = req.body;
+            const { title, description, videoUrl } = req.body;
             const userId = req.user.id;
 
             const result = await pool.query(
                 `INSERT INTO videos (user_id, title, description, video_url)
                  VALUES ($1, $2, $3, $4)
                  RETURNING *`,
-              [userId, title, description, videoUrl]
+                [userId, title, description, videoUrl]
             );
 
             res.status(201).json({
@@ -156,7 +156,7 @@ router.get("/", async (req, res) => {
             FROM videos
             JOIN users ON videos.user_id = users.id
             ORDER BY videos.created_at DESC
-        `);
+        `); 
 
         res.json({
             videos: result.rows
@@ -197,6 +197,126 @@ router.get("/:id", async (req, res) => {
 
         res.json({
             video: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Server error"
+        });
+    }
+});
+
+router.delete("/:id", authMiddleware, async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        const userId = req.user.id;
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(404).json({
+                message: "Video not found"
+            });
+        }
+
+        const videoResult = await pool.query(
+            "SELECT * FROM videos WHERE id = $1",
+            [id]
+        );
+
+        if (videoResult.rows.length === 0) {
+            return res.status(404).json({
+                message: "Video not found"
+            });
+        }
+
+        if (Number(videoResult.rows[0].user_id) !== Number(userId)) {
+            return res.status(403).json({
+                message: "You cannot delete this video"
+            });
+        }
+
+        await pool.query(
+            "DELETE FROM videos WHERE id = $1",
+            [id]
+        );
+
+        res.json({
+            message: "Video deleted successfully"
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Server error"
+        });
+    }
+});
+
+router.delete("/:id/comments/:commentId", authMiddleware, async (req, res) => {
+    try {
+        const videoId = Number(req.params.id);
+        const commentId = Number(req.params.commentId);
+        const userId = req.user.id;
+
+        if (
+            !Number.isInteger(videoId) || videoId <= 0 ||
+            !Number.isInteger(commentId) || commentId <= 0
+        ) {
+            return res.status(404).json({
+                message: "Comment not found"
+            });
+        }
+
+        const result = await pool.query(
+            `DELETE FROM comments
+             WHERE id = $1
+             AND video_id = $2
+             AND user_id = $3
+             RETURNING *`,
+            [commentId, videoId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Comment not found or you are not the owner"
+            });
+        }
+
+        res.json({
+            message: "Comment deleted successfully"
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Server error"
+        });
+    }
+});
+
+router.delete("/me", authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const result = await pool.query(
+            `DELETE FROM users
+             WHERE id = $1
+             RETURNING id, name, email`,
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        res.json({
+            message: "Account deleted successfully",
+            user: result.rows[0]
         });
 
     } catch (error) {
