@@ -31,7 +31,7 @@ export const sendCommentNotification = async (
     commenterName,
     commentText
 ) => {
-    // Если SMTP не настроен — имитируем отправку
+    
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
         console.log("Comment notification simulation:", {
             authorEmail,

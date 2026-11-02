@@ -18,7 +18,6 @@ router.post(
             const { text } = req.body;
             const userId = req.user.id;
 
-            // Получаем данные видео, автора и комментатора
             const videoResult = await pool.query(
                 `SELECT
                     videos.title,
@@ -41,7 +40,6 @@ router.post(
 
             const video = videoResult.rows[0];
 
-            // Сохраняем комментарий
             const result = await pool.query(
                 `INSERT INTO comments (video_id, user_id, text)
                  VALUES ($1, $2, $3)
@@ -49,7 +47,7 @@ router.post(
                 [id, userId, text]
             );
 
-            // Не отправляем письмо, если автор комментирует своё видео
+           
             if (Number(video.user_id) !== Number(userId)) {
                 try {
                     await sendCommentNotification(
